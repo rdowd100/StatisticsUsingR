@@ -10,6 +10,7 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
 1.	Ionosphere Data:  
 Load the mlbench package and load in the Ionosphere dataset from this package. Use help and str to understand the data that was collected on radar data at hospital in Labrador.  
 
