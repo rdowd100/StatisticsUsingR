@@ -1,4 +1,4 @@
-# CA1<br>
+# Cat Data<br>
 Load in the data “Cat_Hwt.csv”.<br>
 Data was collected on deceased male and female adult cats used for experiments: Sex: 1 for male and 2 for female.<br>
 Bwt: body weight in kg.<br>
@@ -21,8 +21,7 @@ d) Conclude your overall results. Use your preferred model to predict the fitted
 Sex Bwt Hwt Height Age Outdoor <br>2 2.6 11.2 23.5 10 2<br>
 1 3.1 12.5 25.4 13.2 2
 
-# CA2<br>
-## Ionosphere Data:<br>
+# Ionosphere Data:<br>
 Load the mlbench package and load in the Ionosphere dataset from this package. Use help and str to understand the data that was collected on radar data at hospital in Labrador.
 set.seed(153)<br><br>
 (a) Have a look at the data, are the any variables to remove before running any models?<br>
