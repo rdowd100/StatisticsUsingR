@@ -1,4 +1,4 @@
-# CA1<br>
+# Cat Data<br>
 Load in the data “Cat_Hwt.csv”.<br>
 Data was collected on deceased male and female adult cats used for experiments: Sex: 1 for male and 2 for female.<br>
 Bwt: body weight in kg.<br>
@@ -6,13 +6,13 @@ Hwt: heart weight in g.<br>
 Height: Height in cm<br>
 Age: Age in years.<br>
 Outdoor: kept outdoors; 1 = Always, 2 = Frequently, 3 = Never<br><br>
-## 1. Relationships<br>
+## Relationships<br>
 a) Investigate if any of the continuous numerical variables have a linear relationship by producing scatterplots, interpret these plots.<br>
 b) What is the response variable and why? What is the research question ofinterest in this dataset?<br>
 c) Investigate if any of the categorical /discrete variables seem to have a relationship with the response variable (selected in part b) using boxplots. Interpret these plots.<br>
 d) Using partc),choose one categorical/discrete variable with at least 3 categories to test to see if there is any difference between the means of the response variable (selected in part b) using an one-way ANOVA test. (Note: if categorical variables are not set up as factors, so change to factor prior to running analysis (as.factor())<br>
 e) Create a boxplot to see if there is any difference between the means of the response variable (selected in part b) across the two variables Sex and Outdoor. Also, create a plot to see if there is an interaction effect for these two variables with the response variable. Interpret these plots. Test to see if any of these factors and/or interactions have a significant relationship with the response variable (selected in part b) using an two-way ANOVA test. (Note: categorical variables are not set up as factors, so change to factor prior to running analysis (as.factor())<br>
-## 2. Multiple Linear Regression<br>
+## Multiple Linear Regression<br>
 a) Fit the “best” simple linear regression model, based on your answers from question 1, justify your choice. Comment on whether the assumptions are satisfied, interpretation of the results and the fit of the model.
      1<br>
 b) Fit a suitable multiple linear regression model,based on your answers from question 1, justify your choice. Comment on whether the assumptions are satisfied, interpretation of the results and the fit of the model.<br>
@@ -21,8 +21,7 @@ d) Conclude your overall results. Use your preferred model to predict the fitted
 Sex Bwt Hwt Height Age Outdoor <br>2 2.6 11.2 23.5 10 2<br>
 1 3.1 12.5 25.4 13.2 2
 
-# CA2<br>
-## Ionosphere Data:<br>
+# Ionosphere Data:<br>
 Load the mlbench package and load in the Ionosphere dataset from this package. Use help and str to understand the data that was collected on radar data at hospital in Labrador.
 set.seed(153)<br><br>
 (a) Have a look at the data, are the any variables to remove before running any models?<br>
