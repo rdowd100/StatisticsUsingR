@@ -1,0 +1,483 @@
+---
+title: "CA2 Ionosphere Data"
+author: "Robert Dowd "
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+1.	Ionosphere Data:  
+Load the mlbench package and load in the Ionosphere dataset from this package. Use help and str to understand the data that was collected on radar data at hospital in Labrador.  
+
+set.seed(153)  
+(a)	  
+Have a look at the data, are the any variables to remove before running any models?  
+
+```{r}
+#Libraries
+library(rpart) #to run decision tree
+library(rpart.plot) #to plot decision tree
+library(gbm)
+library(randomForest)
+library(ipred)
+library(caret) #to get the confusion matrix
+library(pROC) #to get the ROC Curve
+#install.packages('mlbench')
+library(mlbench) #to get the Ionosphere dataset
+library(e1071) #to use svm
+data(Ionosphere)
+
+head(Ionosphere)
+str(Ionosphere)
+help(Ionosphere)
+
+#Creating new data frame so we do not over write the original data frame 
+Ionosphere_Data <- Ionosphere
+variance <- apply(Ionosphere_Data[ , -ncol(Ionosphere_Data)], 2, var)
+variance
+#Excluding V2 as it has no variance 
+Ionosphere_Data$V2 <- NULL
+#Converting V1 to numeric 
+Ionosphere_Data$V1 <- as.numeric(Ionosphere_Data$V1)
+head(Ionosphere_Data)
+str(Ionosphere_Data)
+```
+(b)	   
+Create a training and test dataset (70:30)  
+
+```{r}
+set.seed(153)
+n_train <- round(0.7 * nrow(Ionosphere_Data))
+
+#Create a vector of indices which is an 80% random sample
+train_indices <- sample(1:nrow(Ionosphere_Data), n_train)
+
+#Subset the credit data frame to training indices only
+Ionosphere_train <- Ionosphere_Data[train_indices, ]  
+
+#Exclude the training indices to create the test set
+Ionosphere_test <- Ionosphere_Data[-train_indices, ]
+```
+
+Decision Trees:  
+(c)	  
+Create a decision tree for the train data with Class as the response and all of the other variables bar the variables discussed in (a) as predictors.   
+Is this a classification tree or a regression tree?  
+
+This is a classification tree.  
+
+```{r}
+model <- rpart(formula = Class ~ ., 
+               data = Ionosphere_train, 
+               method = "class")
+print(model)
+#Calculate variable importance in the model
+varImp(model)
+#V10 to V32 are of low importance in this model 
+var_info=varImp(model)
+barplot(var_info$Overall,horiz =TRUE, names.arg = row.names(var_info),xlab="Relative influence",cex.names=0.7)
+```
+
+(d)	  
+Create a diagram of the decision tree created in (c).   
+Interpret the tree diagram.   
+Is this a useful visualisation for the data?  
+
+Yes this visualisation for the data is useful because we can clearly see what is classified bad or good from this tree diagram.  
+
+If V5 is less than 0.15 it is BAD.  
+
+If V5 is greater than or equal to 0.15 AND V27 is greater than or equal to 1 AND V21 is less than 0.99 it is BAD.  
+
+If V5 is greater than or equal to 0.15 AND V27 is greater than or equal to 1 AND V21 is less greater than or equal 0.99 AND V4 is less than -0.52 it is BAD.  
+
+If V5 is greater than or equal to 0.15 AND V27 is greater than or equal to 1 AND V21 is less greater than or equal 0.99 AND V4 is greater than or equal to -0.52 it is GOOD.  
+
+If V5 is greater than or equal to 0.15 AND V27 is less than 1 it is GOOD.  
+
+```{r}
+#Diagram of Classification Decision Tree
+fit <- rpart.plot(x = model, 
+           type = 3, extra = 0,
+           box.palette = "Greens", 
+           fallen.leaves = TRUE)
+fit
+```
+
+(e)	  
+Using print function or otherwise, answer the following about the decision tree created in part (c):   
+How many terminal nodes are there?   
+
+There are 5 terminal nodes.  
+
+What is the minimum number of observations in these terminal nodes?  
+
+V5 < 0.145975, 1 bad.   
+V21 < 0.99242, 0 bad.  
+V4 < -0.517605, 0 bad.  
+V4 >= -0.517605, 5 good.  
+V27 < 0.999945, 9 good.  
+```{r}
+print(model)
+#There are 5 terminal nodes
+```
+(f)	  
+Use the predict function to find the predicted values for the test dataset. 
+Create a confusion matrix.   
+What is the accuracy of this model?   
+
+Accuracy : 0.8667   
+Sensitivity : 0.9394    
+This indicates that it can correctly identify 93.94% of 'good' radar.  
+Correctly predicted 62 true positives.  
+Specificity : 0.7436  
+This indicates that it can correctly identify 74.36% of 'bad' radar.  
+Correctly predicted 29 true negatives.  
+
+95% of the time our true accuracy should lie between 0.7864, 0.9251.  
+
+```{r}
+#Generate predicted classes for test data using the model
+class_pred <- predict(object = model,  newdata = Ionosphere_test, type =
+                            "class")
+#Create confusion matrix with positive set to good
+confusionMatrix(data = class_pred,  reference = Ionosphere_test$Class, positive =
+                      "good")
+
+#Accuracy : 0.8667
+#Sensitivity : 0.9394          
+#Specificity : 0.7436
+```
+
+(g)	  
+Create a ROC plot to show the sensitivity vs specificity of the model.   
+Find the Area Under the Curve (AUC). Interpret this.  
+
+Area under the curve: 0.8619  
+This plot allows us to visually see the Accuracy, Sensitivity and Specificity as discussed in part (f).  
+
+```{r}
+#Generate predicted probabilities for bad, good using the model 
+levels(Ionosphere_Data$Class)
+tree_preds_prob <- predict(model, Ionosphere_test,
+  type="prob")[, 2] #Probability of predicting 'good'
+ROC <- roc(Ionosphere_test$Class, tree_preds_prob,
+                               levels=c("bad","good"))
+#Plot the ROC curve
+plot(ROC, col = 'blue', main = "ROC Curve / Decision Tree Model")
+legend("bottomright",fill = c("blue"),
+       legend = c(paste("AUC = ",round(ROC$auc,3))),
+       cex = 0.9)
+
+#Calculate the area under the curve (AUC)
+ROC$auc
+#Area under the curve: 0.8619
+```
+
+Ensemble techniques Trees:    
+(h)	    
+Use the bagging function on the training data to predict Class.  
+What are the important variables used in this technique.  
+
+The most important variables using this technique are:  
+V27 with 68.66 relative influence  
+V5 with 63.56 relative influence  
+V3 with 59.7 relative influence  
+V7 with 57.63 relative influence  
+
+```{r}
+bagged_model <- bagging(formula = Class ~ .,
+                        data = Ionosphere_train, 
+                        coob = TRUE)
+varImp(bagged_model)
+print(bagged_model)
+var_info=varImp(bagged_model)
+barplot(var_info$Overall,horiz =TRUE, names.arg = row.names(var_info),xlab="Relative influence",cex.names=0.7)
+```
+
+(i)	  
+Use the predict function to find the predicted values for the test dataset using the model in (h).   
+Create a confusion matrix.   
+What is the accuracy of this model?   
+
+Accuracy : 0.9048   
+Sensitivity : 0.9545      
+This indicates that it can correctly identify 95.45% of 'good' radar.  
+Correctly predicted 63 true positives.  
+Specificity : 0.8205  
+This indicates that it can correctly identify 82.05% of 'bad' radar.  
+Correctly predicted 32 true negatives.  
+
+95% of the time our true accuracy should lie between 0.8318, 0.9534.  
+
+```{r}
+#Generate predicted classes for test data using the model
+class_pred <- predict(object = bagged_model,  newdata = Ionosphere_test, type =
+                        "class")
+#Create confusion matrix with positive set to good
+confusionMatrix(data = class_pred,  reference = Ionosphere_test$Class, positive =
+                  "good")
+
+#Accuracy : 0.9048 
+#Sensitivity : 0.9545          
+#Specificity : 0.8205
+```
+
+(j)	  
+Use the random forest technique on the training data to predict Class.    
+What are the important variables used in this technique.  
+
+The most important variables using this technique are:  
+V5 with 16.18 relative influence  
+V27 with 10.83 relative influence 
+V3 with 9.39 relative influence 
+V7 with 8.33 relative influence  
+
+```{r}
+rf_model <- randomForest(formula =  Class ~ ., 
+                         data = Ionosphere_train)
+varImp(rf_model)
+print(rf_model)
+var_info=varImp(rf_model)
+barplot(var_info$Overall,horiz =TRUE, names.arg = row.names(var_info),xlab="Relative influence",cex.names=0.7)
+
+#All variables are important using this technique 
+```
+(k)	    
+Use the plot function on your output of the randomForest function in (j).   
+What does it tell you?  
+
+It looks as though error is the lowest with around 42 trees.   
+We can confirm this using the “which.min” function and call information from “err.rate” in our model.  
+
+```{r}
+plot(rf_model)
+which.min(rf_model$err.rate[,1])
+```
+
+(l)	   
+Predict the response for the test set and create the confusion matrix and calculate the accuracy.   
+How does it compare with the model obtained for bagging in part (h)?  
+
+Accuracy : 0.9143 
+Sensitivity : 0.9545   
+This indicates that it can correctly identify 95.45% of 'good' radar.  
+Correctly predicted 63 true positives.  
+Specificity : 0.8462  
+This indicates that it can correctly identify 84.62% of 'bad' radar.  
+Correctly predicted 33 true negatives.  
+
+95% of the time our true accuracy should lie between 0.8435, 0.9601.  
+
+This random forest model is better at predicting true negatives than our bagged model in part (i). 
+
+```{r}
+#Generate predicted classes for test data using the model
+rf_class_pred <- predict(object = rf_model,  newdata = Ionosphere_test, type =
+                        "class")
+#Create confusion matrix with positive set to good
+confusionMatrix(data = rf_class_pred,  reference = Ionosphere_test$Class, positive =
+                  "good")
+
+#Accuracy : 0.9143
+#Sensitivity : 0.9545          
+#Specificity : 0.8462 
+```
+
+(m)	    
+Perform boosting on the training data to predict Class.   
+What are the important variables used in this technique.  
+
+The most important variables using this technique are: 
+V5 with 22.08 relative influence
+V27 with 20.83 relative influence  
+V7 with 13.4 relative influence  
+V3 with 9.6 relative influence  
+
+```{r}
+#Turn off scientific notation
+options(scipen = 999)
+#Needs to be set up as binary variable
+Ionosphere_train_gbm <- Ionosphere_train 
+Ionosphere_train_gbm$Class<-(as.numeric(Ionosphere_train_gbm$Class)-1)
+#head(Ionosphere_train_gbm)
+Ionosphere_test_gbm <- Ionosphere_test
+Ionosphere_test_gbm$Class<-(as.numeric(Ionosphere_test_gbm$Class)-1)
+#head(Ionosphere_test_gbm)
+#Train a 5000-tree GBM model
+gbm_model <- gbm(formula = Class ~ ., distribution = "bernoulli", data = Ionosphere_train_gbm, n.trees = 5000)
+summary(gbm_model)
+```
+(n)	   
+Predict the response for the test set and create a confusion matrix.   
+What is the accuracy of this model?   
+
+Accuracy : 0.8952  
+Sensitivity : 0.9697   
+This indicates that it can correctly identify 96.97% of 'good' radar.  
+Correctly predicted 64 true positives.  
+Specificity : 0.7692  
+This indicates that it can correctly identify 76.92% of 'bad' radar.  
+Correctly predicted 30 true negatives.  
+
+95% of the time our true accuracy should lie between 0.8203, 0.9465.  
+
+How does it compare with the bagging and the random forest models?   
+
+The accuracy of this boosting model is very similar to the accuracy of the bagged and random forest model as it is close to 90%. This model predicts the true positives better than the other models but is less accurate when predicting true negatives.  
+
+```{r}
+#Generate predicted classes for test data using the model
+gbm_class_pred <- predict(object = gbm_model,  newdata = Ionosphere_test_gbm, type =
+                        "response", n.trees=5000)
+#Create confusion matrix with positive set to good
+gbm_class_pred <- ifelse(gbm_class_pred < 0.99, 0, 1)
+gbm_class_pred <- factor(gbm_class_pred, levels = c(0, 1), labels = c("bad", "good"))
+
+confusionMatrix(data = gbm_class_pred,  reference = Ionosphere_test$Class, positive = "good")
+
+#Accuracy : 0.8952 
+#Sensitivity : 0.9697          
+#Specificity : 0.7692
+```
+
+(o)	  
+Create a ROC plot to show the sensitivity vs specificity of all the models from the previous section.   
+Find the Area Under the Curve (AUC) for each. Interpret this.   
+
+Decision Tree Model   
+Area under the curve: 0.8619   
+
+Bagged Model  
+Area under the curve: 0.9555   
+
+Random Forest Model  
+Area under the curve: 0.9777    
+
+Boosting Model  
+Area under the curve: 0.9662  
+
+The Random Forest Model is the better model as the area under the curve is closer to 1 which would be a perfect model.  
+
+```{r}
+#Generate predicted probabilities for bad, good using the model 
+levels(Ionosphere_Data$Class)
+tree_preds_prob <- predict(model, Ionosphere_test, 
+                           type="prob")[, 2] #Probability of predicting 'good'
+roc1 <- roc(Ionosphere_test$Class, tree_preds_prob,
+           levels=c("bad","good"))
+
+bagged_preds_prob <- predict(bagged_model, Ionosphere_test,
+                           type="prob")[, 2] #Probability of predicting 'good'
+roc2 <- roc(Ionosphere_test$Class, bagged_preds_prob,
+           levels=c("bad","good"))
+
+rf_preds_prob <- predict(rf_model, Ionosphere_test,
+                           type="prob")[, 2] #Probability of predicting 'good'
+roc3 <- roc(Ionosphere_test$Class, rf_preds_prob,
+           levels=c("bad","good"))
+
+gbm_preds_prob <- predict(gbm_model, Ionosphere_test_gbm,
+                           type="response", n.trees=5000) #Probability of predicting 'good'
+roc4 <- roc(Ionosphere_test_gbm$Class, gbm_preds_prob,
+           levels=c(0,1))
+
+# Plot the first ROC curve
+plot(roc1, col = "blue", main = "ROC Curves")
+
+# Add the second ROC curve to the same plot
+lines(roc2, col = "red")
+lines(roc3, col = "green")
+lines(roc4, col = "orange")
+
+# Add a legend to the plot
+legend("bottomright", legend = c(paste("Decision Tree:",round(roc1$auc,3)), paste("Bagged:", round(roc2$auc,3)), paste("Random Forest:", round(roc3$auc,3)), paste("Boosting:", round(roc4$auc,3))), col = c("blue", "red", "green", "orange"), lty = 1)
+
+roc1$auc
+roc2$auc
+roc3$auc
+roc4$auc
+```
+
+Support Vector Machines:  
+(p)	  
+Have a look at the data briefly, do you think a linear or radial kernel is more appropriate given the visualizations.  
+
+Some of the 'good' radar seems linear when we look at the plots but the 'good' and 'bad' radar signals are not linear separable so radial kernel seems to be more appropriate.  
+
+```{r}
+#PairPlots      
+pairs(Ionosphere_Data[,1:10],col=Ionosphere_Data$Class,oma=c(12,3,3,3))
+par(xpd = TRUE)
+legend("bottom", fill = 1:2,legend = c( levels(Ionosphere_Data$Class)),
+       bty='n',ncol=2)
+
+pairs(Ionosphere_Data[,10:20],col=Ionosphere_Data$Class,oma=c(12,3,3,3))
+par(xpd = TRUE)
+legend("bottom", fill = 1:2,legend = c( levels(Ionosphere_Data$Class)),
+       bty='n',ncol=2)
+
+
+```
+(q)	  
+Use tune.svm to select the best hyperparameter values for the svm model with the kernel selected in part q.   
+Run this model on training dataset  
+
+```{r}
+tune_out <- tune.svm(x=Ionosphere_train[,1:33], y=Ionosphere_train$Class, gamma=10^(-3:3), cost=c(0.01,0.1,1,10,100,1000), kernel="radial")
+
+Ionosphere_train <- na.omit(Ionosphere_train)
+#print best values of cost and gamma
+tune_out$best.parameters$cost
+#10
+tune_out$best.parameters$gamma
+#0.1
+
+svm_model <- svm(Class~ ., data=Ionosphere_train, method="C-classification", kernel="radial", cost=tune_out$best.parameters$cost, gamma=tune_out$best.parameters$gamma)
+
+#compute training accuracy
+pred_train <- predict(svm_model, Ionosphere_train)
+mean(pred_train == Ionosphere_train$Class)
+#1
+```
+
+(r)	  
+Predict the response for the test set and create a confusion matrix.   
+What is the accuracy of this model?   
+
+Accuracy : 0.9048  
+Sensitivity : 0.9545   
+This indicates that it can correctly identify 95.45% of 'good' radar.  
+Correctly predicted 63 true positives.  
+Specificity : 0.8205  
+This indicates that it can correctly identify 82.05% of 'bad' radar.  
+Correctly predicted 32 true negatives.  
+
+95% of the time our true accuracy should lie between 0.8435, 0.9601.  
+
+```{r}
+pred_test <- predict(svm_model, Ionosphere_test)
+mean(pred_test == Ionosphere_test$Class)
+#0.9047619
+
+confusionMatrix(data = pred_test,  reference = Ionosphere_test$Class, positive = "good")
+
+#Accuracy : 0.9048
+#Sensitivity : 0.9545          
+#Specificity : 0.8205
+
+```
+Overall:  
+(s)	  
+Based on all the models performed here and the different measures of performance, which of these techniques would you recommend, giving reasons.  
+
+Based on all the models performed here as it has the best accuracy and highest percentages for sensitivity and sensitivity and greater area under the curve in the ROC curve. I would recommend the random forest model.  
+
+Random Forest Model    
+Accuracy : 0.9143  
+Sensitivity : 0.9545           
+Specificity : 0.8462   
