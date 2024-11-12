@@ -1,5 +1,5 @@
 ---
-title: "CA2 Ionosphere Data"
+title: "Ionosphere Data Project"
 author: "Robert Dowd "
 output:
   html_document: default
